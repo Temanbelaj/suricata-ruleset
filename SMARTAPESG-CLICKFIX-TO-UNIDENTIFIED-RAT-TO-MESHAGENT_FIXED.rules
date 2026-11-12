@@ -1,0 +1,32 @@
+# SmartApeSG ClickFix -> RAT -> MeshAgent  (sample: 2026-09-15, victim 10.9.15.207)
+# Base: user's Smartapesg.rules (SID 1237232/1237233). Fixed + extended.
+# Observed chain: yewanthology.co (TLS, t+0) -> viaductandspinel.com (HTTP GET /zv,/ost
+#   -> 301 to https, then ~76KB + ~11MB in) -> DoH dns.google (t+130) -> raw non-TLS
+#   session to 144.124.242.171:443 (no DNS, no SNI, ~1.3MB out / 14KB in, 373s)
+#   -> maroonexpedition.tech (37.120.237.197, TLS, possibly MeshAgent - UNVERIFIED).
+# Roles of yewanthology.co / maroonexpedition.tech are inferred from timing/volume only.
+
+# --- FIX of 1237232: two content in one tls.sni = logical AND -> never matched.
+#     One rule per domain; bsize pins the exact SNI. HUNTING until roles are verified.
+alert tls $HOME_NET any -> $EXTERNAL_NET any (msg:"HUNTING SmartApeSG chain SNI yewanthology.co (first hop, role inferred)"; flow:established,to_server; tls.sni; content:"yewanthology.co"; bsize:15; classtype:trojan-activity; sid:1237232; rev:2;)
+alert tls $HOME_NET any -> $EXTERNAL_NET any (msg:"HUNTING SmartApeSG chain SNI maroonexpedition.tech (late stage, role inferred)"; flow:established,to_server; tls.sni; content:"maroonexpedition.tech"; bsize:21; classtype:trojan-activity; sid:1237234; rev:1;)
+alert tls $HOME_NET any -> $EXTERNAL_NET any (msg:"MALWARE SmartApeSG chain SNI viaductandspinel.com (payload staging)"; flow:established,to_server; tls.sni; content:"viaductandspinel.com"; bsize:20; classtype:trojan-activity; sid:1237235; rev:1;)
+
+# --- DNS twins: survive when the TLS side is not visible (QUIC/ECH) 
+alert dns $HOME_NET any -> any any (msg:"HUNTING SmartApeSG chain DNS yewanthology.co"; dns.query; content:"yewanthology.co"; nocase; bsize:15; classtype:trojan-activity; sid:1237236; rev:1;)
+alert dns $HOME_NET any -> any any (msg:"MALWARE SmartApeSG chain DNS viaductandspinel.com"; dns.query; content:"viaductandspinel.com"; nocase; bsize:20; classtype:trojan-activity; sid:1237237; rev:1;)
+alert dns $HOME_NET any -> any any (msg:"HUNTING SmartApeSG chain DNS maroonexpedition.tech"; dns.query; content:"maroonexpedition.tech"; nocase; bsize:21; classtype:trojan-activity; sid:1237238; rev:1;)
+
+# --- FIX of 1237233: missing ';' after sid; msg named maroonexpedition.tech but the GET
+#     actually went to viaductandspinel.com; no Host anchor -> /zv matched ANY host.
+#     Also add /ost (second request), which the original missed.
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"MALWARE SmartApeSG staging GET /zv or /ost on viaductandspinel.com (curl)"; flow:established,to_server; http.method; content:"GET"; http.host; content:"viaductandspinel.com"; bsize:20; http.uri; pcre:"/^\/(?:zv|ost)$/"; http.user_agent; content:"curl/"; startswith; classtype:trojan-activity; sid:1237233; rev:2;)
+
+# --- Host-independent variant (domains rotate): curl GET of exactly /zv or /ost over
+#     plain HTTP. Short, generic paths -> HUNTING only, expect FPs without tuning.
+alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"HUNTING SmartApeSG-style curl GET /zv or /ost (host-independent)"; flow:established,to_server; http.method; content:"GET"; http.uri; pcre:"/^\/(?:zv|ost)$/"; http.user_agent; content:"curl/"; startswith; classtype:trojan-activity; sid:1237239; rev:1;)
+
+# --- Behavioral: non-TLS protocol on TCP/443 with a large upload (the RAT-like session).
+#     No SNI, no DNS, custom binary stream. Durable vs infrastructure rotation, but a
+#     behavior rule: needs FP tuning against legit non-TLS-on-443 software.
+alert tcp $HOME_NET any -> $EXTERNAL_NET 443 (msg:"HUNTING non-TLS protocol on TCP/443 with large upload (custom RAT channel?)"; flow:established,to_server; app-layer-protocol:failed; stream_size:client,>,100000; threshold:type limit, track by_dst, count 1, seconds 3600; classtype:trojan-activity; sid:1237240; rev:1;)
