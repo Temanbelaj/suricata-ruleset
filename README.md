@@ -8,8 +8,7 @@ Suricata detection rules and network traffic analysis write-ups for malware, bui
 
 | Family | Rules file | SIDs | Notes |
 |---|---|---|---|
-| AMOS (Atomic macOS) Stealer, plaintext HTTP variant | `rules/amos-stealer-v2.rules` | 1000040–1000046 | Beacon JSON, zip exfil upload, archive structure. SID 1000046 (QUIC SNI) is disabled: untested on Suricata 7.0.3 |
-| AMOS, `stage=` URL variant (Unit 42 report) | `rules/amos-stealer.rules` | 1000030–1000032 | Does not match the plaintext variant above; kept for the variant it was written for |
+
 | SmartApeSG ClickFix chain | `rules/smartapesg.rules` | 1237232–1237240 | Staging, DNS/SNI, and a behavioural rule for non-TLS traffic on TCP/443 |
 
 ## Rule conventions
