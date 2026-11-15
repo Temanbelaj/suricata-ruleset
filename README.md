@@ -9,7 +9,8 @@ Suricata detection rules and network traffic analysis write-ups for malware, bui
 | Family | Rules file | SIDs | Notes |
 |---|---|---|---|
 
-| SmartApeSG ClickFix chain | `rules/smartapesg.rules` | 1237232–1237240 | Staging, DNS/SNI, and a behavioural rule for non-TLS traffic on TCP/443 |
+| SmartApeSG ClickFix chain | `rules/smartapesg.rules` | 1237232–1237240 | Staging, DNS/SNI, and a behavioural rule for non-TLS traffic on TCP/443 | 
+| AMOS Stealer | `rules/amos.rules` | 1000030–1000042 | Staging, DNS/SNI, and a behavioural rule for non-TLS traffic on TCP/443 |
 
 ## Rule conventions
 
